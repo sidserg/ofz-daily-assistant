@@ -1,9 +1,9 @@
 import os
 import sys
 from decimal import Decimal
-from tinkoff.invest import Client, RequestError, InstrumentIdType
-from tinkoff.invest.utils import quotation_to_decimal
-from tinkoff.invest.schemas import OrderDirection, OrderType
+from t_tech.invest import Client, RequestError, InstrumentIdType
+from t_tech.invest.utils import quotation_to_decimal
+from t_tech.invest.schemas import OrderDirection, OrderType
 
 MIN_THRESHOLD_RUB = 600.0
 COUPON_NKD_LIMIT_RATIO = 0.5
