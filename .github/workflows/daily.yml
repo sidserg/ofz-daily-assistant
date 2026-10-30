@@ -3,7 +3,7 @@ name: Daily OFZ Assistant
 on:
   schedule:
     - cron: '0 22 * * *'
-    timezone: 'Europe/Moscow'
+      timezone: 'Europe/Moscow'
   workflow_dispatch:
 
 jobs:
