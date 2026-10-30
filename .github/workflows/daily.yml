@@ -2,7 +2,7 @@ name: Daily OFZ Assistant
 
 on:
   schedule:
-    - cron: '28 19 * * *'
+    - cron: '47 19 * * *'
       timezone: 'Europe/Moscow'
   workflow_dispatch:
 
