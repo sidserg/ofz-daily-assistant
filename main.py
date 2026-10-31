@@ -45,7 +45,7 @@ def get_bonds_in_portfolio(client, account_id: str) -> list:
                 nkd = quotation_to_float(pos.current_nkd) if pos.current_nkd else 0.0
                 lot_price_rub = price_rub + nkd
                 
-                print(f"  {bond.ticker}: цена={price_rub:.2f}₽ nkd={nkd:.2f} -> лот={lot_price_rub:.2f} ₽")
+
                 
                 bonds.append({
                     "figi": pos.figi,
