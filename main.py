@@ -144,20 +144,19 @@ def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
     return quantity
 
 def process_account(token: str, token_name: str):
-    print(f"
---- Начинаем обработку: {token_name} ---")
+    print("\n--- Начинаем обработку: " + token_name + " ---")
     if not token:
-        print(f"Ошибка: токен {token_name} не найден. Пропускаем.")
+        print("Ошибка: токен " + token_name + " не найден. Пропускаем.")
         return
 
     try:
         with Client(token) as client:
             accounts = client.users.get_accounts().accounts
             if not accounts:
-                print(f"Нет доступных счетов для {token_name}")
+                print("Нет доступных счетов для " + token_name)
                 return
             account_id = accounts[0].id
-            print(f"Используем счёт: {account_id}")
+            print("Используем счёт: " + account_id)
 
             free_rub = get_free_rub(client, account_id)
             print(f"Свободных рублей: {free_rub:.2f}")
@@ -212,10 +211,8 @@ def main():
     if token_2:
         process_account(token_2, "Портфель 2")
     else:
-        print("
---- Токен для Портфеля 2 не задан. Работаем только с одним. ---")
+        print("\n--- Токен для Портфеля 2 не задан. Работаем только с одним. ---")
 
 
 if __name__ == "__main__":
-
     main()
