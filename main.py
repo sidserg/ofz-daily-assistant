@@ -46,12 +46,30 @@ def get_bond_details(client, figi: str):
             id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
             id=figi
         ).instrument
+        
+        coupon_value = 0.0
+        try:
+            from datetime import datetime, timedelta
+            to_date = datetime.now()
+            from_date = to_date - timedelta(days=365)
+            
+            coupons_response = client.instruments.get_bond_coupons(
+                instrument_id=figi,
+                from_=from_date,
+                to=to_date
+            )
+            if coupons_response.events:
+                coupon_value = quotation_to_float(coupons_response.events[0].pay_one_bond)
+        except Exception as e:
+            print(f"Не удалось получить купоны для {figi}: {e}")
+        
         return {
             "figi": bond.figi,
             "ticker": bond.ticker,
             "name": bond.name,
             "nominal": quotation_to_float(bond.nominal),
             "coupon_quantity_per_year": bond.coupon_quantity_per_year,
+            "coupon_value": coupon_value,
             "aci_value": quotation_to_float(bond.aci_value) if bond.aci_value else 0.0,
             "maturity_date": bond.maturity_date,
         }
@@ -60,7 +78,13 @@ def get_bond_details(client, figi: str):
         return None
 
 def calculate_coupon_per_period(bond_info) -> float:
-    return 0.0
+    return bond_info.get("coupon_value", 0.0)
+    nominal = bond_info.get("nominal", 0.0)
+    # Ставка купона в процентах от номинала (например, 11.5)
+    coupon_rate = bond_info.get("coupon_rate", 0.0)
+    if coupon_rate <= 0:
+        return 0.0
+    return (coupon_rate / 100.0) * nominal / coupons_per_year
 
 def select_bond_to_buy(client, bonds: list) -> dict:
     candidates = []
@@ -85,6 +109,7 @@ def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
     lot_price_rub = price_rub + nkd
     if lot_price_rub <= 0:
         return 0
+    # Покупаем максимум лотов на все свободные деньги
     quantity = int(free_rub // lot_price_rub)
     print(f"Цена лота (с НКД): {lot_price_rub:.2f} руб. Доступно: {free_rub:.2f} руб. Можно купить: {quantity} лотов")
     return quantity
