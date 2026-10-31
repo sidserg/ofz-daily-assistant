@@ -145,51 +145,77 @@ def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
 
 def process_account(token: str, token_name: str):
     if not token:
-        print("Ошибка: токен " + token_name + " не найден. Пропускаем.")
+        print(f"Ошибка: токен {token_name} не найден. Пропускаем.")
         return
 
     try:
         with Client(token) as client:
             accounts = client.users.get_accounts().accounts
             if not accounts:
-                print("Нет доступных счетов для " + token_name)
+                print(f"Нет доступных счетов для {token_name}")
                 return
             account_id = accounts[0].id
-            print("Используем счёт: " + account_id)
+            print("\n=== " + token_name + " ===")
+            print(f"Счёт: {account_id}")
 
             free_rub = get_free_rub(client, account_id)
             print(f"Свободных рублей: {free_rub:.2f}")
 
+            # --- АУДИТ ВСЕГО ПОРТФЕЛЯ ---
+            print("--- Состав портфеля (все бумаги) ---")
+            portfolio = client.operations.get_portfolio(account_id=account_id)
+            for pos in portfolio.positions:
+                try:
+                    if pos.instrument_type == "bond":
+                        bond = client.instruments.bond_by(id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI, id=pos.figi).instrument
+                        price = quotation_to_float(pos.current_price)
+                        nkd = quotation_to_float(pos.current_nkd) if pos.current_nkd else 0.0
+                        print(f"  [{bond.class_code}] Облигация {bond.ticker} ({bond.name}): {quotation_to_float(pos.quantity):.0f} шт, цена={price:.2f}₽, НКД={nkd:.2f}₽")
+                    elif pos.instrument_type == "share":
+                        share = client.instruments.share_by(id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI, id=pos.figi).instrument
+                        price = quotation_to_float(pos.current_price)
+                        print(f"  [Акция] {share.ticker} ({share.name}): {quotation_to_float(pos.quantity):.0f} шт, цена={price:.2f}₽")
+                    elif pos.instrument_type == "etf":
+                        etf = client.instruments.etf_by(id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI, id=pos.figi).instrument
+                        price = quotation_to_float(pos.current_price)
+                        print(f"  [Фонд] {etf.ticker} ({etf.name}): {quotation_to_float(pos.quantity):.0f} шт, цена={price:.2f}₽")
+                    elif pos.instrument_type == "currency":
+                        price = quotation_to_float(pos.current_price)
+                        print(f"  [Валюта] {pos.figi}: {quotation_to_float(pos.quantity):.2f} шт, цена={price:.2f}₽")
+                    else:
+                        print(f"  [{pos.instrument_type}] FIGI={pos.figi}: {quotation_to_float(pos.quantity)} шт")
+                except Exception as e:
+                    print(f"  [Ошибка чтения {pos.figi}]: {e}")
+            print("-------------------------------------")
+
+            # --- ТОРГОВЛЯ ТОЛЬКО ОФЗ ---
             bonds = get_bonds_in_portfolio(client, account_id)
 
             if not bonds:
-                print("В портфеле нет подходящих ОФЗ.")
-            else:
-                print(f"Найдено ОФЗ в портфеле: {len(bonds)}")
-                for b in bonds:
-                    print(f"  {b['ticker']}: цена={b['current_price']:.2f}₽, НКД={b['nkd']:.2f}₽, лот={b['lot_price_rub']:.2f}₽")
-
-            print("--- Проверка условий для покупки ---")
-
-            if free_rub < MIN_THRESHOLD_RUB:
-                print(f"Сумма меньше порога {MIN_THRESHOLD_RUB} руб. Завершаем для {token_name}.")
+                print("Нет ОФЗ (TQOB) для торговли.")
                 return
 
-            if not bonds:
+            print(f"Найдено ОФЗ (TQOB): {len(bonds)}")
+            for b in bonds:
+                print(f"  {b['ticker']}: цена={b['current_price']:.2f}₽, НКД={b['nkd']:.2f}₽, лот={b['lot_price_rub']:.2f}₽")
+
+            print("--- Проверка условий ---")
+            if free_rub < MIN_THRESHOLD_RUB:
+                print(f"Сумма меньше порога {MIN_THRESHOLD_RUB} руб. Завершаем.")
                 return
 
             selected = select_bond_to_buy(client, bonds)
             if not selected:
-                print("Нет подходящих ОФЗ для покупки (все отфильтрованы по НКД).")
+                print("Нет подходящих ОФЗ (все отфильтрованы по НКД).")
                 return
             print(f"Выбрана ОФЗ: {selected['ticker']} ({selected['name']}), НКД: {selected['nkd']:.2f}")
 
             quantity = calculate_buy_quantity(free_rub, selected)
             if quantity <= 0:
-                print("Недостаточно средств для покупки даже 1 лота.")
+                print("Недостаточно средств.")
                 return
 
-            print(f"Выставляем заявку на покупку {quantity} лотов {selected['ticker']}...")
+            print(f"Заявка на покупку {quantity} лотов {selected['ticker']}...")
             try:
                 response = client.orders.post_order(
                     instrument_id=selected["instrument_uid"],
@@ -198,9 +224,9 @@ def process_account(token: str, token_name: str):
                     account_id=account_id,
                     order_type=OrderType.ORDER_TYPE_MARKET,
                 )
-                print(f"Заявка выставлена: {response.order_id}, статус: {response.execution_report_status}")
+                print(f"Успех: {response.order_id}")
             except RequestError as e:
-                print(f"Ошибка выставления заявки: {e}")
+                print(f"Ошибка: {e}")
     except RequestError as e:
         print(f"Ошибка API для {token_name}: {e}")
 
@@ -208,22 +234,13 @@ def process_account(token: str, token_name: str):
 def main():
     token_1 = os.environ.get("TINKOFF_TOKEN")
     token_2 = os.environ.get("TINKOFF_TOKEN_2")
-
-    if not token_1 and not token_2:
-        print("Ошибка: ни один TINKOFF_TOKEN не найден")
-        sys.exit(1)
-
-    print("=" * 50)
-    print("=== НАЧАЛО РАБОТЫ ПОМОЩНИКА ===")
-    print("=" * 50)
-
+    print("=== НАЧАЛО ===")
     process_account(token_1, "Портфель 1")
-
     if token_2:
         process_account(token_2, "Портфель 2")
-    else:
-        print("Токен для Портфеля 2 не задан. Работаем только с одним.")
 
 
 if __name__ == "__main__":
+    main()
+
     main()
