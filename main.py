@@ -28,12 +28,20 @@ def get_bonds_in_portfolio(client, account_id: str) -> list:
         bonds = []
         for pos in portfolio.positions:
             if pos.instrument_type == "bond":
+                # Получаем номинал облигации через BondBy
+                bond = client.instruments.bond_by(
+                    id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+                    id=pos.figi
+                ).instrument
+                nominal = quotation_to_float(bond.nominal)
+                # Цена в пунктах -> рубли: price / 100 * nominal
+                price_rub = quotation_to_float(pos.current_price) / 100.0 * nominal
                 bonds.append({
                     "figi": pos.figi,
                     "instrument_uid": pos.instrument_uid,
                     "quantity": quotation_to_float(pos.quantity),
                     "current_nkd": quotation_to_float(pos.current_nkd) if pos.current_nkd else 0.0,
-                    "current_price": quotation_to_float(pos.current_price),
+                    "current_price": price_rub,
                 })
         return bonds
     except RequestError as e:
