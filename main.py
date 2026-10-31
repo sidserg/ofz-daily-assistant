@@ -143,17 +143,18 @@ def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
     print(f"Цена лота (с НКД): {lot_price_rub:.2f} руб. Доступно: {free_rub:.2f} руб. Можно купить: {quantity} лотов")
     return quantity
 
-def main():
-    token = os.environ.get("TINKOFF_TOKEN")
+def process_account(token: str, token_name: str):
+    print(f"
+--- Начинаем обработку: {token_name} ---")
     if not token:
-        print("Ошибка: TINKOFF_TOKEN не найден")
-        sys.exit(1)
+        print(f"Ошибка: токен {token_name} не найден. Пропускаем.")
+        return
 
     try:
         with Client(token) as client:
             accounts = client.users.get_accounts().accounts
             if not accounts:
-                print("Нет доступных счетов")
+                print(f"Нет доступных счетов для {token_name}")
                 return
             account_id = accounts[0].id
             print(f"Используем счёт: {account_id}")
@@ -162,12 +163,12 @@ def main():
             print(f"Свободных рублей: {free_rub:.2f}")
 
             if free_rub < MIN_THRESHOLD_RUB:
-                print(f"Сумма меньше порога {MIN_THRESHOLD_RUB} руб. Завершаем.")
+                print(f"Сумма меньше порога {MIN_THRESHOLD_RUB} руб. Завершаем для {token_name}.")
                 return
 
             bonds = get_bonds_in_portfolio(client, account_id)
             if not bonds:
-                print("В портфеле нет облигаций.")
+                print("В портфеле нет подходящих ОФЗ.")
                 return
             print(f"Найдено облигаций в портфеле: {len(bonds)}")
 
@@ -195,8 +196,26 @@ def main():
             except RequestError as e:
                 print(f"Ошибка выставления заявки: {e}")
     except RequestError as e:
-        print(f"Ошибка API: {e}")
+        print(f"Ошибка API для {token_name}: {e}")
+
+
+def main():
+    token_1 = os.environ.get("TINKOFF_TOKEN")
+    token_2 = os.environ.get("TINKOFF_TOKEN_2")
+
+    if not token_1 and not token_2:
+        print("Ошибка: ни один TINKOFF_TOKEN не найден")
         sys.exit(1)
 
+    process_account(token_1, "Портфель 1")
+    
+    if token_2:
+        process_account(token_2, "Портфель 2")
+    else:
+        print("
+--- Токен для Портфеля 2 не задан. Работаем только с одним. ---")
+
+
 if __name__ == "__main__":
+
     main()

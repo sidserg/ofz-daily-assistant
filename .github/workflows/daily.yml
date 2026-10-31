@@ -25,4 +25,5 @@ jobs:
       - name: Run assistant
         env:
           TINKOFF_TOKEN: ${{ secrets.TINKOFF_TOKEN }}
+          TINKOFF_TOKEN_2: ${{ secrets.TINKOFF_TOKEN_2 }}
         run: python main.py
