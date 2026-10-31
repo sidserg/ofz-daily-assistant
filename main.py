@@ -80,10 +80,9 @@ def select_bond_to_buy(client, bonds: list) -> dict:
     return candidates[0]
 
 def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
-    price_pct = bond["current_price"]
-    nominal = bond["nominal"]
+    price_rub = bond["current_price"]
     nkd = bond["nkd"]
-    lot_price_rub = (price_pct / 100.0) * nominal + nkd
+    lot_price_rub = price_rub + nkd
     if lot_price_rub <= 0:
         return 0
     quantity = int(free_rub // lot_price_rub)
