@@ -144,7 +144,6 @@ def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
     return quantity
 
 def process_account(token: str, token_name: str):
-    print("\n--- Начинаем обработку: " + token_name + " ---")
     if not token:
         print("Ошибка: токен " + token_name + " не найден. Пропускаем.")
         return
@@ -161,19 +160,27 @@ def process_account(token: str, token_name: str):
             free_rub = get_free_rub(client, account_id)
             print(f"Свободных рублей: {free_rub:.2f}")
 
+            bonds = get_bonds_in_portfolio(client, account_id)
+
+            if not bonds:
+                print("В портфеле нет подходящих ОФЗ.")
+            else:
+                print(f"Найдено ОФЗ в портфеле: {len(bonds)}")
+                for b in bonds:
+                    print(f"  {b['ticker']}: цена={b['current_price']:.2f}₽, НКД={b['nkd']:.2f}₽, лот={b['lot_price_rub']:.2f}₽")
+
+            print("--- Проверка условий для покупки ---")
+
             if free_rub < MIN_THRESHOLD_RUB:
                 print(f"Сумма меньше порога {MIN_THRESHOLD_RUB} руб. Завершаем для {token_name}.")
                 return
 
-            bonds = get_bonds_in_portfolio(client, account_id)
             if not bonds:
-                print("В портфеле нет подходящих ОФЗ.")
                 return
-            print(f"Найдено облигаций в портфеле: {len(bonds)}")
 
             selected = select_bond_to_buy(client, bonds)
             if not selected:
-                print("Нет подходящих ОФЗ для покупки (все отфильтрованы).")
+                print("Нет подходящих ОФЗ для покупки (все отфильтрованы по НКД).")
                 return
             print(f"Выбрана ОФЗ: {selected['ticker']} ({selected['name']}), НКД: {selected['nkd']:.2f}")
 
@@ -206,12 +213,16 @@ def main():
         print("Ошибка: ни один TINKOFF_TOKEN не найден")
         sys.exit(1)
 
+    print("=" * 50)
+    print("=== НАЧАЛО РАБОТЫ ПОМОЩНИКА ===")
+    print("=" * 50)
+
     process_account(token_1, "Портфель 1")
-    
+
     if token_2:
         process_account(token_2, "Портфель 2")
     else:
-        print("\n--- Токен для Портфеля 2 не задан. Работаем только с одним. ---")
+        print("Токен для Портфеля 2 не задан. Работаем только с одним.")
 
 
 if __name__ == "__main__":
