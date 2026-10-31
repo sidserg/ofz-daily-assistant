@@ -30,14 +30,44 @@ def get_bonds_in_portfolio(client, account_id: str) -> list:
         bonds = []
         for pos in portfolio.positions:
             if pos.instrument_type == "bond":
+                bond = client.instruments.bond_by(
+                    id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+                    id=pos.figi,
+                ).instrument
+                
+                # Фильтр: только ОФЗ (класс TQOB)
+                if bond.class_code != "TQOB":
+                    print(f"  Пропуск {bond.ticker}: это не ОФЗ (класс {bond.class_code})")
+                    continue
+                
+                # API отдает цену в рублях
+                price_rub = quotation_to_float(pos.current_price)
+                nkd = quotation_to_float(pos.current_nkd) if pos.current_nkd else 0.0
+                lot_price_rub = price_rub + nkd
+                
+                print(f"  {bond.ticker}: цена={price_rub:.2f}₽ nkd={nkd:.2f} -> лот={lot_price_rub:.2f} ₽")
+                
                 bonds.append({
                     "figi": pos.figi,
                     "instrument_uid": pos.instrument_uid,
+                    "ticker": bond.ticker,
+                    "name": bond.name,
                     "quantity": quotation_to_float(pos.quantity),
-                    "current_nkd": quotation_to_float(pos.current_nkd) if pos.current_nkd else 0.0,
-                    "current_price": quotation_to_float(pos.current_price),
+                    "nominal": quotation_to_float(bond.nominal),
+                    "nkd": nkd,
+                    "lot_price_rub": lot_price_rub,
+                    "current_price": price_rub,
                 })
         return bonds
+    except RequestError as e:
+        print(f"Ошибка получения портфеля: {e}")
+        return []
+    except RequestError as e:
+        print(f"Ошибка получения портфеля: {e}")
+        return []
+    except RequestError as e:
+        print(f"Ошибка получения портфеля: {e}")
+        return []
     except RequestError as e:
         print(f"Ошибка получения портфеля: {e}")
         return []
@@ -106,12 +136,9 @@ def select_bond_to_buy(client, bonds: list) -> dict:
     return candidates[0]
 
 def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
-    price_rub = bond["current_price"]
-    nkd = bond["nkd"]
-    lot_price_rub = price_rub + nkd
+    lot_price_rub = bond["lot_price_rub"]
     if lot_price_rub <= 0:
         return 0
-    # Покупаем максимум лотов на все свободные деньги
     quantity = int(free_rub // lot_price_rub)
     print(f"Цена лота (с НКД): {lot_price_rub:.2f} руб. Доступно: {free_rub:.2f} руб. Можно купить: {quantity} лотов")
     return quantity
