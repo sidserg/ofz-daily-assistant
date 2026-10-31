@@ -83,7 +83,7 @@ def calculate_buy_quantity(free_rub: float, bond: dict) -> int:
     price_pct = bond["current_price"]
     nominal = bond["nominal"]
     nkd = bond["nkd"]
-    lot_price_rub = price_pct + nkd
+    lot_price_rub = (price_pct / 100.0) * nominal + nkd
     if lot_price_rub <= 0:
         return 0
     quantity = int(free_rub // lot_price_rub)
