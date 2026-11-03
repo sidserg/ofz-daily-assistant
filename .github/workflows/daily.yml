@@ -27,17 +27,3 @@ jobs:
           TINKOFF_TOKEN: ${{ secrets.TINKOFF_TOKEN }}
           TINKOFF_TOKEN_2: ${{ secrets.TINKOFF_TOKEN_2 }}
         run: python main.py
-
-      - name: Send Report Email
-        if: always()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "OFZ Assistant Report"
-          to: ${{ secrets.MAIL_TO }}
-          from: OFZ Assistant <${{ secrets.MAIL_USERNAME }}>
-          body: file://report.txt

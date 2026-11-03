@@ -232,36 +232,15 @@ def process_account(token: str, token_name: str):
 
 
 def main():
-    import io
-    import sys
     token_1 = os.environ.get("TINKOFF_TOKEN")
     token_2 = os.environ.get("TINKOFF_TOKEN_2")
-    
-    # Перехватываем вывод
-    old_stdout = sys.stdout
-    new_stdout = io.StringIO()
-    sys.stdout = new_stdout
-    
-    try:
-        if token_1:
-            process_account(token_1, "Портфель 1")
-        if token_2:
-            process_account(token_2, "Портфель 2")
-    finally:
-        sys.stdout = old_stdout
-        report = new_stdout.getvalue()
-        
-        # Печатаем в лог GitHub
-        print(report)
-        
-        # Сохраняем в файл для отправки
-        with open("report.txt", "w", encoding="utf-8") as f:
-            f.write(report)
+    print("=== НАЧАЛО ===")
+    process_account(token_1, "Портфель 1")
+    if token_2:
+        process_account(token_2, "Портфель 2")
 
 
 if __name__ == "__main__":
-    main()
-
     main()
 
     main()
